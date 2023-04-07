@@ -21,11 +21,12 @@ def datasetConfig(filename, batch=32, train_valid_split=0.30):
     for line in lines:
         labels.append(int(line[0]))
         sentences.append(line[2:-1])
-    # Zip will combine labels and sentences into a single iterator
-    #   of 2-tuples, (sentence, label) so they'll stay together.
+    # Zip will combine labels and sentences into a single iterator of 2-tuples,
+    #   (sentence, label) so they'll stay together even when we shuffle.
     # Having hard time getting zip object to iterate as I thought
     #   it should, so I converted to list.
     data = list(zip(sentences, labels))
+
     # # Show a sampling of the input data
     # print("\n" * 3)
     # print("Sampling of input data:", end="\n\n")
@@ -33,6 +34,7 @@ def datasetConfig(filename, batch=32, train_valid_split=0.30):
     #     # equivalent to labels[i], sentences[i]
     #     print(f"{data[i][1]}\t{data[i][0]}")
     # print()
+
     # Set up train-test split
     random.shuffle(data)
     split_point = int(train_valid_split*(len(data)))
@@ -41,7 +43,9 @@ def datasetConfig(filename, batch=32, train_valid_split=0.30):
     # Set up vocabulary list using adapt().
     # It is important to use *only* the training data for this.
     train_text = [entry[0] for entry in train_data]
+    # Set up dictionary of all words in the training set.
     binary_vectorization.adapt(train_text)
+
     # # Show results of vectorizing the data
     # ex_sentence, ex_label = vectorize_entry(train_data[0][0], train_data[0][1])
     # print(ex_sentence)
@@ -50,6 +54,6 @@ def datasetConfig(filename, batch=32, train_valid_split=0.30):
     #     if int(entry) == 1:
     #         print(binary_vectorization.get_vocabulary()[i])
     
-   
+    
 
 dataset = datasetConfig('movieReviews.txt')
