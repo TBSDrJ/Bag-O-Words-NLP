@@ -1,16 +1,13 @@
 import random
 import tensorflow as tf
 import tensorflow.keras.layers as layers
+from tensorflow.data import Dataset
 
 binary_vectorization = layers.TextVectorization(output_mode='binary')
 
-def vectorize_entry(sentence, label):
-    print(sentence, label)
-    sentence = tf.convert_to_tensor(sentence)
+def vectorize_entry(sentence): 
     sentence = tf.expand_dims(sentence, -1)
-    label = tf.convert_to_tensor(label, dtype=tf.float32)
-    return binary_vectorization(sentence), label
-
+    return binary_vectorization(sentence)
 
 def datasetConfig(filename, batch=32, train_valid_split=0.30):
     # Set up movie reviews so it can be used as a bag of words
@@ -40,10 +37,13 @@ def datasetConfig(filename, batch=32, train_valid_split=0.30):
     split_point = int(train_valid_split*(len(data)))
     valid_data = data[:split_point]
     train_data = data[split_point:]
+    # Gonna need to separate them back out again now that they are shuffled.
+    train_text = [entry[0] for entry in train_data]
+    train_labels = [entry[1] for entry in train_data]
+    valid_text = [entry[0] for entry in valid_data]
+    valid_labels = [entry[1] for entry in valid_data]
     # Set up vocabulary list using adapt().
     # It is important to use *only* the training data for this.
-    train_text = [entry[0] for entry in train_data]
-    # Set up dictionary of all words in the training set.
     binary_vectorization.adapt(train_text)
 
     # # Show results of vectorizing the data
@@ -54,6 +54,20 @@ def datasetConfig(filename, batch=32, train_valid_split=0.30):
     #     if int(entry) == 1:
     #         print(binary_vectorization.get_vocabulary()[i])
     
-    
+    train_text_tf = [tf.convert_to_tensor(sentence) for sentence in train_text]
+    train_text_ds = Dataset.from_tensor_slices(train_text_tf)
+    train_text_ds = train_text_ds.map(vectorize_entry)
+    train_labels_tf = [tf.convert_to_tensor(label) for label in train_labels]
+    train_labels_ds = Dataset.from_tensor_slices(train_labels_tf)
+    train = Dataset.zip((train_text_ds, train_labels_ds))
+    # print(train.element_spec)
+    valid_text_tf = [tf.convert_to_tensor(sentence) for sentence in valid_text]
+    valid_text_ds = Dataset.from_tensor_slices(valid_text_tf)
+    valid_text_ds = valid_text_ds.map(vectorize_entry)
+    valid_labels_tf = [tf.convert_to_tensor(label) for label in valid_labels]
+    valid_labels_ds = Dataset.from_tensor_slices(valid_labels_tf)
+    valid = Dataset.zip((valid_text_ds, valid_labels_ds))
+    # print(valid.element_spec)
+    return train, valid
 
-dataset = datasetConfig('movieReviews.txt')
+train, valid = datasetConfig('movieReviews.txt')
