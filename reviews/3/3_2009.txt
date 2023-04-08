@@ -1,2 +1,2 @@
-3	an interesting slice of history
+an interesting slice of history
 

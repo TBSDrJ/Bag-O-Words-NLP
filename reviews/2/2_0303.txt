@@ -1,2 +1,2 @@
-2	The main problem being that it's only a peek
+The main problem being that it's only a peek
 

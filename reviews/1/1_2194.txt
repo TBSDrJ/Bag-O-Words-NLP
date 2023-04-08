@@ -1,2 +1,2 @@
-1	In this case zero
+In this case zero
 

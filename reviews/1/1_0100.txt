@@ -1,2 +1,2 @@
-1	Translation: ` We don't need to try very hard. '
+Translation: ` We don't need to try very hard. '
 

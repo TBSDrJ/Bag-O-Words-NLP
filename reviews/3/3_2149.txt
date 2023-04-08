@@ -1,2 +1,2 @@
-3	, `` They're out there! ''
+, `` They're out there! ''
 

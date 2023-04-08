@@ -1,2 +1,2 @@
-3	This is a smart movie that knows its classical music, knows its Freud and knows its Sade
+This is a smart movie that knows its classical music, knows its Freud and knows its Sade
 

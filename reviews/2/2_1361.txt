@@ -1,2 +1,2 @@
-2	A direct-to-void release, heading nowhere
+A direct-to-void release, heading nowhere
 

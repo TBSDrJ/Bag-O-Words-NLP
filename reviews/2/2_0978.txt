@@ -1,2 +1,2 @@
-2	The camera twirls!
+The camera twirls!
 

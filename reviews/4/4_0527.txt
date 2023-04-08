@@ -1,2 +1,2 @@
-4	Even better than the first one!
+Even better than the first one!
 

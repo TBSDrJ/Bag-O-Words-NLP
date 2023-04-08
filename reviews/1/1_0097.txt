@@ -1,2 +1,2 @@
-1	This is no `` Waterboy! ''
+This is no `` Waterboy! ''
 

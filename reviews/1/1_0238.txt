@@ -1,2 +1,2 @@
-1	Is it a comedy?
+Is it a comedy?
 

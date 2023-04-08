@@ -1,2 +1,2 @@
-1	Some episodes work, some don't
+Some episodes work, some don't
 

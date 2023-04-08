@@ -1,2 +1,2 @@
-2	Fubar is very funny, but not always in a laugh-out-loud way
+Fubar is very funny, but not always in a laugh-out-loud way
 

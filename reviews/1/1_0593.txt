@@ -1,2 +1,2 @@
-1	-- is a crime that should be punishable by chainsaw
+-- is a crime that should be punishable by chainsaw
 

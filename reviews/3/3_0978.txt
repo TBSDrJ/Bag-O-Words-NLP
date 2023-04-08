@@ -1,2 +1,2 @@
-3	Gets the look and the period trappings right
+Gets the look and the period trappings right
 

@@ -1,2 +1,2 @@
-2	Chomp chomp!
+Chomp chomp!
 

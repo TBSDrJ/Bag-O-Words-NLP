@@ -1,2 +1,2 @@
-2	Proves that some movie formulas don't need messing with -- like the big-bug movie
+Proves that some movie formulas don't need messing with -- like the big-bug movie
 

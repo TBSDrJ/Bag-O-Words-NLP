@@ -1,2 +1,2 @@
-2	This is more a case of ` Sacre bleu! '
+This is more a case of ` Sacre bleu! '
 
