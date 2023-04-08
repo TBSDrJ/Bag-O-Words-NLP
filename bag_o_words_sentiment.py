@@ -1,6 +1,7 @@
 import random
 import tensorflow as tf
 import tensorflow.keras.layers as layers
+import tensorflow.keras.losses as losses
 from tensorflow.data import Dataset
 from tensorflow.keras.models import Sequential
 
@@ -67,18 +68,32 @@ def datasetConfig(filename: str, batch: int=32, train_valid_split: float=0.30):
     train_text_tf = [tf.convert_to_tensor(sentence) for sentence in train_text]
     train_text_ds = Dataset.from_tensor_slices(train_text_tf)
     train_text_ds = train_text_ds.map(vectorize_entry)
-    train_labels_tf = [tf.convert_to_tensor(label) for label in train_labels]
+    train_labels_tf = [tf.convert_to_tensor(label, dtype=tf.float32) for label in train_labels]
     train_labels_ds = Dataset.from_tensor_slices(train_labels_tf)
     train = Dataset.zip((train_text_ds, train_labels_ds))
-    # print(train.element_spec)
     valid_text_tf = [tf.convert_to_tensor(sentence) for sentence in valid_text]
     valid_text_ds = Dataset.from_tensor_slices(valid_text_tf)
     valid_text_ds = valid_text_ds.map(vectorize_entry)
-    valid_labels_tf = [tf.convert_to_tensor(label) for label in valid_labels]
+    valid_labels_tf = [tf.convert_to_tensor(label, dtype=tf.float32) for label in valid_labels]
     valid_labels_ds = Dataset.from_tensor_slices(valid_labels_tf)
     valid = Dataset.zip((valid_text_ds, valid_labels_ds))
-    # print(valid.element_spec)
     return train, valid, vocab_size
 
+def build_model(input_size):
+    # input_spec = train.element_spec[0]
+    model = Sequential()
+    model.add(layers.Dense(1, input_shape=[input_size]))
+    model.compile(loss=losses.MeanAbsoluteError)
+    return model
+
 train, valid, vocab_size = datasetConfig('movieReviews.txt')
-print(vocab_size)
+# print(train.element_spec)
+# print(valid.element_spec)
+
+model = build_model(vocab_size)
+
+model.fit(
+    x = train,
+    batch_size = 32,
+    validation_data = valid,
+)
