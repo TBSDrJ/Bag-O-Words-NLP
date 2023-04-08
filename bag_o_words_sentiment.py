@@ -2,14 +2,23 @@ import random
 import tensorflow as tf
 import tensorflow.keras.layers as layers
 from tensorflow.data import Dataset
+from tensorflow.keras.models import Sequential
 
 binary_vectorization = layers.TextVectorization(output_mode='binary')
 
-def vectorize_entry(sentence): 
+def vectorize_entry(sentence: str): 
+    """Intended to be used with Dataset.map to vectorize sentences
+    
+    Requires the binary_vectorization layer to be initialized with a
+    vocabulary, assuming use of the .adapt() method."""
     sentence = tf.expand_dims(sentence, -1)
     return binary_vectorization(sentence)
 
-def datasetConfig(filename, batch=32, train_valid_split=0.30):
+def datasetConfig(filename: str, batch: int=32, train_valid_split: float=0.30):
+    """Create the training and validation datasets
+    
+    Assumes data is all in one text file, with format [label]\t[review]\n
+    on each line, one review per line."""
     # Set up movie reviews so it can be used as a bag of words
     with open(filename, 'r') as fin:
         lines = fin.readlines()
@@ -45,6 +54,7 @@ def datasetConfig(filename, batch=32, train_valid_split=0.30):
     # Set up vocabulary list using adapt().
     # It is important to use *only* the training data for this.
     binary_vectorization.adapt(train_text)
+    vocab_size = len(binary_vectorization.get_vocabulary())
 
     # # Show results of vectorizing the data
     # ex_sentence, ex_label = vectorize_entry(train_data[0][0], train_data[0][1])
@@ -68,6 +78,7 @@ def datasetConfig(filename, batch=32, train_valid_split=0.30):
     valid_labels_ds = Dataset.from_tensor_slices(valid_labels_tf)
     valid = Dataset.zip((valid_text_ds, valid_labels_ds))
     # print(valid.element_spec)
-    return train, valid
+    return train, valid, vocab_size
 
-train, valid = datasetConfig('movieReviews.txt')
+train, valid, vocab_size = datasetConfig('movieReviews.txt')
+print(vocab_size)
