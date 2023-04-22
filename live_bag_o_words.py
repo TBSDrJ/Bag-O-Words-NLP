@@ -18,7 +18,7 @@ vectorization = layers.TextVectorization(output_mode='binary')
 """
 Goal of the dataset building is to get two Datasets, train
 and test. Both should look like a list of pairs (example 
-has batch size = 16):
+is classification and has batch size = 16):
 (
     <tf.Tensor: shape=(16, 13910), dtype=float32, numpy=
     array([[0., 1., 1., ..., 0., 0., 0.],
@@ -44,7 +44,9 @@ rating as its only value (for regression).
 """
 
 def lines_to_pairs(lines: list[string]) -> list[(string, int)]:
-    """Convert reviews to pairs: review, stars"""
+    """Convert reviews to pairs: review, stars
+    
+    Reviews are strings, stars are integers."""
     labels = []
     sentences = []
     for line in lines:
@@ -61,7 +63,10 @@ def data_into_subsets(data: list[(string, int)],
     """Separate data into the usual 4 subsets
     
     training data, training labels, validation data, validation labels
-    Still have a long way to go to get where we want to go after this."""
+    Still have a long way to go to get where we want to go after this.
+    We still have sentences as strings and labels as integers.
+    Also make both train and validation sets into a size divisible by the
+        batch size."""
     split_point = int(ttsplit * len(data))
     # Make the training dataset have a size that is evenly
     # divisible by the batch size. Notice that split_point is the size
@@ -70,13 +75,60 @@ def data_into_subsets(data: list[(string, int)],
     train_data = data[split_point:]
     # Now truncate the validation set to make its length divisible
     # by the batch size.
-    split_point -= split_point - BATCH_SIZE
+    split_point -= split_point % BATCH_SIZE
     valid_data = data[:split_point]
     train_sentences = [entry[0] for entry in train_data]
     train_labels = [entry[1] for entry in train_data]
     valid_labels = [entry[1] for entry in valid_data]
     valid_sentences = [entry[0] for entry in valid_data]
     return train_sentences, train_labels, valid_sentences, valid_labels
+
+def one_hot(labels: list[int]) -> list[list[float]]:
+    """Carry out one-hot encoding, convert entries to float."""
+    one_hots = [[0., 0., 0., 0., 0.].copy() for i in range(len(labels))]
+    for i, entry in enumerate(labels):
+        one_hots[i][entry] = 1.0
+    return one_hots
+
+def one_dim(labels: list[int]) -> list[float]:
+    """Make each entry into a list of length 1, change to float"""
+    new_labels = [[entry * 1.0] for entry in labels]
+    return new_labels
+
+def batch(data: list[float] | list[list[float]]
+        ) -> list[list[float]] | list[list[list[float]]]:
+    """Break data into batches.
+    
+    Assumes that length of input is divisible by batch size, if not
+        just loses any entries beyond last multiple of batch size."""
+    tmplist = []
+    for i in range(len(data) // BATCH_SIZE):
+        tmplist.append(data[BATCH_SIZE * i:BATCH_SIZE * (i+1)])
+    return tmplist
+
+def clean_sentences(sentences: list[str]) -> list[list[str]]:
+    """Convert each string into its component words."""
+    sentences = [sentence.strip().lower() for sentence in sentences]
+    # Get rid of all non-word characters using regular expression
+    for i, sentence in enumerate(sentences):
+        sentences[i] = re.sub(r'[^a-z\ ]', '', sentence)
+    return sentences
+
+def into_vectors(sentences: list[list[str]], vocab: list[str]
+        ) -> list[list[float]]:
+    """Convert list of words to vectors using bag of words method."""
+    vectors = []
+    for sentence in sentences:
+        tmp_vec = [0] * (len(vocab) + 1)
+        for word in sentence:
+            if word in vocab:
+                tmp_vec[vocab.index(word)] = 1
+        vectors.append(tmp_vec)
+    return vectors
+    
+def batch_to_tensor(data: list[list[float]]) -> list[tf.Tensor]:
+    """Convert each batch in data to a tf.Tensor"""
+    return [tf.convert_to_tensor(batch) for batch in data]
 
 def configDataset(
         filename: string, 
@@ -93,87 +145,43 @@ def configDataset(
     # train_labels = one_hot(train_labels)
     # valid_labels = one_hot(valid_labels)
     # Use the next two lines for regression
-    # train_labels = one_dim(train_labels)
-    # valid_labels = one_dim(valid_labels)
-    # One-hot encoding
-    train_one_hot = [[0,0,0,0,0].copy() for i in range(len(train_labels))]
-    for i, entry in enumerate(train_labels):
-        train_one_hot[i][entry] = 1
-    valid_one_hot = [[0,0,0,0,0].copy() for i in range(len(valid_labels))]
-    for i, entry in enumerate(valid_labels):
-        valid_one_hot[i][entry] = 1
-    # Break into batches
-    tmplist = []
-    for i in range(len(train_one_hot) // BATCH_SIZE):
-        tmplist.append(train_one_hot[BATCH_SIZE * i:BATCH_SIZE * (i+1)])
-    train_one_hot = tmplist
-    # Attach the partial batch at the end
-    # train_one_hot.append(train_one_hot_end)
-    tmplist = []
-    for i in range(len(valid_one_hot) // BATCH_SIZE):
-        tmplist.append(valid_one_hot[BATCH_SIZE * i:BATCH_SIZE * (i+1)])
-    valid_one_hot = tmplist
-    # Attach the partial batch at the end
-    # valid_one_hot.append(valid_one_hot_end)
-    # Make the labels into Tensors
-    train_labels_tf = [
-        tf.convert_to_tensor(batch, dtype=tf.float32) for batch in train_one_hot
-    ]
-    valid_labels_tf = [
-        tf.convert_to_tensor(batch, dtype=tf.float32) for batch in valid_one_hot
-    ]
-    # Now, move on to the training data
-    # 'adapt' is a method that builds the vocabulary from the training set.
-    vectorization.adapt(train_sentences)
+    train_labels = one_dim(train_labels)
+    valid_labels = one_dim(valid_labels)
+
+    # Switch to sentences to get those to a similar stage.
     # Convert sentences to vectors. 
     # First, split into words, get rid of non-alphanumeric characters
-    train_sentences = [sentence.strip().lower().split() for sentence in train_sentences]
-    valid_sentences = [sentence.strip().lower().split() for sentence in valid_sentences]
-    for sentence in train_sentences:
-        for i, word in enumerate(sentence):
-            tmp = re.sub(r"\W", '', word)
-            if len(tmp) > 0:
-                sentence[i] = tmp
-    for sentence in valid_sentences:
-        for i, word in enumerate(sentence):
-            tmp = re.sub(r"\W", '', word)
-            if len(tmp) > 0:
-                sentence[i] = tmp
+    train_sentences = clean_sentences(train_sentences)    
+    valid_sentences = clean_sentences(valid_sentences)
+
+    # 'adapt' is a method that builds the vocabulary from the training set.
+    vectorization.adapt(train_sentences)
     vocab = vectorization.get_vocabulary()
-    train_vectors = []
-    for sentence in train_sentences:
-        tmp_vec = [0] * (len(vocab) + 1)
-        for word in sentence:
-            if word in vocab:
-                tmp_vec[vocab.index(word)] = 1
-        train_vectors.append(tmp_vec)
-    valid_vectors = []
-    for sentence in valid_sentences:
-        tmp_vec = [0] * (len(vocab) + 1)
-        for word in sentence:
-            if word in vocab:
-                tmp_vec[vocab.index(word)] = 1
-            else:
-                tmp_vec[0] = 1
-        valid_vectors.append(tmp_vec)
-    for i, vector in enumerate(train_vectors):
-        train_vectors[i] = vector[12:400]
-    for i, vector in enumerate(valid_vectors):
-        valid_vectors[i] = vector[12:400]
-    tmplist = []
-    for i in range(len(train_vectors) // BATCH_SIZE):
-        tmplist.append(train_vectors[BATCH_SIZE * i: BATCH_SIZE * (i+1)])
-    train_vectors = tmplist
-    tmplist = []
-    for i in range(len(valid_vectors) // BATCH_SIZE):
-        tmplist.append(valid_vectors[BATCH_SIZE * i: BATCH_SIZE * (i+1)])
-    valid_vectors = tmplist
-    train_vectors_tf = [
-        tf.convert_to_tensor(batch, dtype=tf.float32) for batch in train_vectors
-    ]
-    valid_vectors_tf = [
-        tf.convert_to_tensor(batch, dtype=tf.float32) for batch in valid_vectors
-    ]
+
+    # Convert sentences to lists of words, and use the vocab to
+    #   convert sentences to vectors
+    train_sentences = [sentence.split() for sentence in train_sentences]
+    valid_sentences = [sentence.split() for sentence in valid_sentences]
+    train_vectors = into_vectors(train_sentences, vocab)
+    valid_vectors = into_vectors(valid_sentences, vocab)
+
+    # If you want to truncate the vocabulary tested
+    # for i, vector in enumerate(train_vectors):
+    #     train_vectors[i] = vector[:6400]
+    # for i, vector in enumerate(valid_vectors):
+    #     valid_vectors[i] = vector[:6400]
+
+    # Now the data and labels are both ready to be batched:
+    train_labels = batch(train_labels)
+    valid_labels = batch(valid_labels)
+    train_vectors = batch(train_vectors)
+    valid_vectors = batch(valid_vectors)
+    # Convert each batch into a single Tensor
+    train_labels_tf = batch_to_tensor(train_labels)
+    valid_labels_tf = batch_to_tensor(valid_labels)
+    train_vectors_tf = batch_to_tensor(train_vectors)
+    valid_vectors_tf = batch_to_tensor(valid_vectors)
+    # Put data and labels back together into a tf Dataset and we're done!
     train = Dataset.from_tensor_slices((train_vectors_tf, train_labels_tf))
     valid = Dataset.from_tensor_slices((valid_vectors_tf, valid_labels_tf))
     return train, valid, len(vocab)
@@ -186,11 +194,11 @@ def build_model() -> Model:
     model.add(layers.Dense(128, activation='relu'))
     model.add(layers.Dense(32, activation='relu'))
     model.add(layers.Dense(8, activation='relu'))
-    model.add(layers.Dense(5, activation='softmax'))
+    model.add(layers.Dense(1))
     model.compile(
-        loss = losses.CategoricalCrossentropy(),
+        loss = losses.MeanSquaredError(),
         optimizer = optimizers.Adam(learning_rate=10**(-6)),
-        metrics = ['accuracy'],
+        # metrics = ['accuracy'],
     )
     return model
 
