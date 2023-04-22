@@ -157,6 +157,8 @@ def configDataset(
     # 'adapt' is a method that builds the vocabulary from the training set.
     vectorization.adapt(train_sentences)
     vocab = vectorization.get_vocabulary()
+    # If you want to truncate the vocabulary tested
+    vocab = vocab[:1600]
 
     # Convert sentences to lists of words, and use the vocab to
     #   convert sentences to vectors
@@ -164,12 +166,6 @@ def configDataset(
     valid_sentences = [sentence.split() for sentence in valid_sentences]
     train_vectors = into_vectors(train_sentences, vocab)
     valid_vectors = into_vectors(valid_sentences, vocab)
-
-    # If you want to truncate the vocabulary tested
-    # for i, vector in enumerate(train_vectors):
-    #     train_vectors[i] = vector[:6400]
-    # for i, vector in enumerate(valid_vectors):
-    #     valid_vectors[i] = vector[:6400]
 
     # Now the data and labels are both ready to be batched:
     train_labels = batch(train_labels)
