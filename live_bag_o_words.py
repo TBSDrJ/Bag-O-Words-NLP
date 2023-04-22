@@ -15,6 +15,34 @@ BATCH_SIZE = 16
 
 vectorization = layers.TextVectorization(output_mode='binary')
 
+"""
+Goal of the dataset building is to get two Datasets, train
+and test. Both should look like a list of pairs (example 
+has batch size = 16):
+(
+    <tf.Tensor: shape=(16, 13910), dtype=float32, numpy=
+    array([[0., 1., 1., ..., 0., 0., 0.],
+       [0., 1., 1., ..., 0., 0., 0.],
+       [0., 1., 1., ..., 0., 0., 0.],
+       ...,
+       [0., 1., 0., ..., 0., 0., 0.],
+       [0., 0., 1., ..., 0., 0., 0.],
+       [0., 0., 0., ..., 0., 0., 0.]], dtype=float32)>, 
+    <tf.Tensor: shape=(16, 5), dtype=float32, numpy=
+    array([[0., 0., 1., 0., 0.],
+        [0., 0., 1., 0., 0.],
+        [0., 1., 0., 0., 0.],
+        ...,
+        [0., 0., 1., 0., 0.],
+        [0., 1., 0., 0., 0.],
+        [0., 0., 1., 0., 0.]], dtype=float32)>
+)
+First half of the pair is the bag of words representation of
+the sentence, the second is the one-hot encoding of the label
+(for classification), or a length 1 vector with the star 
+rating as its only value (for regression).
+"""
+
 def lines_to_pairs(lines: list[string]) -> list[(string, int)]:
     """Convert reviews to pairs: review, stars"""
     labels = []
@@ -32,22 +60,27 @@ def data_into_subsets(data: list[(string, int)],
         ttsplit: float) -> list[str] | list[int] | list[str] | list[int]:
     """Separate data into the usual 4 subsets
     
-    training data, training labels, validation data, validation labels"""
+    training data, training labels, validation data, validation labels
+    Still have a long way to go to get where we want to go after this."""
     split_point = int(ttsplit * len(data))
+    # Make the training dataset have a size that is evenly
+    # divisible by the batch size. Notice that split_point is the size
+    # of the *validation* set.
+    split_point -= BATCH_SIZE - ((len(data) - split_point) % BATCH_SIZE)
     train_data = data[split_point:]
+    # Now truncate the validation set to make its length divisible
+    # by the batch size.
+    split_point -= split_point - BATCH_SIZE
     valid_data = data[:split_point]
     train_sentences = [entry[0] for entry in train_data]
-    """ That list comprehension is equivalent to:
-    train_sentences = []
-    for entry in train_data:
-        train_sentences.append(entry[0])
-    """
     train_labels = [entry[1] for entry in train_data]
     valid_labels = [entry[1] for entry in valid_data]
     valid_sentences = [entry[0] for entry in valid_data]
     return train_sentences, train_labels, valid_sentences, valid_labels
 
-def configDataset(filename: string, train_test_split: float=0.3) -> Dataset | Dataset | int:
+def configDataset(
+        filename: string, 
+        train_test_split: float=0.3) -> Dataset | Dataset | int:
     """Configure the datasets: train, validation
     
     Third return is the size of the vocabulary."""
@@ -56,6 +89,12 @@ def configDataset(filename: string, train_test_split: float=0.3) -> Dataset | Da
     data = lines_to_pairs(lines)
     (train_sentences, train_labels, valid_sentences, 
             valid_labels) = data_into_subsets(data, train_test_split)
+    # Use the next two lines for classification
+    # train_labels = one_hot(train_labels)
+    # valid_labels = one_hot(valid_labels)
+    # Use the next two lines for regression
+    # train_labels = one_dim(train_labels)
+    # valid_labels = one_dim(valid_labels)
     # One-hot encoding
     train_one_hot = [[0,0,0,0,0].copy() for i in range(len(train_labels))]
     for i, entry in enumerate(train_labels):
@@ -64,12 +103,6 @@ def configDataset(filename: string, train_test_split: float=0.3) -> Dataset | Da
     for i, entry in enumerate(valid_labels):
         valid_one_hot[i][entry] = 1
     # Break into batches
-    # Capture the end that makes the length not divisible by batch size
-    # Truncate the dataset to a length divisible by the batch size
-    train_one_hot_end = train_one_hot[-(len(train_one_hot) % BATCH_SIZE):]
-    valid_one_hot_end = valid_one_hot[-(len(valid_one_hot) % BATCH_SIZE):]
-    train_one_hot = train_one_hot[:-(len(train_one_hot) % BATCH_SIZE)]
-    valid_one_hot = valid_one_hot[:-(len(valid_one_hot) % BATCH_SIZE)]
     tmplist = []
     for i in range(len(train_one_hot) // BATCH_SIZE):
         tmplist.append(train_one_hot[BATCH_SIZE * i:BATCH_SIZE * (i+1)])
@@ -124,24 +157,17 @@ def configDataset(filename: string, train_test_split: float=0.3) -> Dataset | Da
                 tmp_vec[0] = 1
         valid_vectors.append(tmp_vec)
     for i, vector in enumerate(train_vectors):
-        train_vectors[i] = vector[10:200]
+        train_vectors[i] = vector[12:400]
     for i, vector in enumerate(valid_vectors):
-        valid_vectors[i] = vector[10:200]
-    # Capture end of the data set that makes length not divisible by batch size
-    train_vectors_end = train_vectors[-(len(train_vectors) % BATCH_SIZE):]
-    valid_vectors_end = valid_vectors[-(len(valid_vectors) % BATCH_SIZE):]
-    train_vectors = train_vectors[:-(len(train_vectors) % BATCH_SIZE)]
-    valid_vectors = valid_vectors[:-(len(valid_vectors) % BATCH_SIZE)]
+        valid_vectors[i] = vector[12:400]
     tmplist = []
     for i in range(len(train_vectors) // BATCH_SIZE):
         tmplist.append(train_vectors[BATCH_SIZE * i: BATCH_SIZE * (i+1)])
     train_vectors = tmplist
-    # train_vectors.append(train_vectors_end)
     tmplist = []
     for i in range(len(valid_vectors) // BATCH_SIZE):
         tmplist.append(valid_vectors[BATCH_SIZE * i: BATCH_SIZE * (i+1)])
     valid_vectors = tmplist
-    # valid_vectors.append(valid_vectors_end)
     train_vectors_tf = [
         tf.convert_to_tensor(batch, dtype=tf.float32) for batch in train_vectors
     ]
