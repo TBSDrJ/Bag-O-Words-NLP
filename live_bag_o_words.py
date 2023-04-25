@@ -198,6 +198,14 @@ def build_model() -> Model:
     )
     return model
 
+def save_stuff():
+    """Save model and vocabulary to a file."""
+    model_path = 'live_bag_o_words'
+    model.save(model_path)
+    vocab = vectorization.get_vocabulary()
+    with open(model_path + 'vocabulary.dat', 'wb') as fout:
+        pickle.dump(vocab, fout)
+
 
 def main():
     train, valid, vocab_size = configDataset('movieReviews.txt')
@@ -210,12 +218,11 @@ def main():
             epochs = 75,
             batch_size = BATCH_SIZE,
         )
+    # This makes it save when you hit CTRL-C, before it exits.
     except KeyboardInterrupt:
-        model.save('live_bag_o_words')
-        vocab = vectorization.get_vocabulary()
-        with open('vocabulary.dat', 'wb') as fout:
-            pickle.dump(vocab, fout)
-
+        save_stuff()
+    # This will get it to save if it gets to the end of the last epoch.
+    save_stuff()
 
 if __name__ == "__main__":
     main()
