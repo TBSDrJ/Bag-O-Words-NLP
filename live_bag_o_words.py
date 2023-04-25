@@ -158,7 +158,7 @@ def configDataset(
     vectorization.adapt(train_sentences)
     vocab = vectorization.get_vocabulary()
     # If you want to truncate the vocabulary tested
-    vocab = vocab[:1600]
+    # vocab = vocab[:400]
 
     # Convert sentences to lists of words, and use the vocab to
     #   convert sentences to vectors
@@ -203,16 +203,18 @@ def main():
     train, valid, vocab_size = configDataset('movieReviews.txt')
 
     model = build_model()
-    model.fit(
-        x = train,
-        validation_data = valid,
-        epochs = 75,
-        batch_size = BATCH_SIZE,
-    )
-    model.save('live_bag_o_words')
-    vocab = vectorization.get_vocabulary()
-    with open('vocabulary.dat', 'wb') as fout:
-        pickle.dump(vocab, fout)
+    try:
+        model.fit(
+            x = train,
+            validation_data = valid,
+            epochs = 75,
+            batch_size = BATCH_SIZE,
+        )
+    except KeyboardInterrupt:
+        model.save('live_bag_o_words')
+        vocab = vectorization.get_vocabulary()
+        with open('vocabulary.dat', 'wb') as fout:
+            pickle.dump(vocab, fout)
 
 
 if __name__ == "__main__":
